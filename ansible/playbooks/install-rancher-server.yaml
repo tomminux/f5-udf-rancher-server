@@ -94,7 +94,7 @@
     - name: Startiing Rancher Server Docker Container
       become: true
       become_user: ubuntu
-      command: docker run -d --name f5Rancher -p 10.1.20.50:8080:8080 --restart=unless-stopped -v /home/ubuntu/dockerhost-storage/rancher:/var/lib/mysql rancher/server
+      command: docker run -d --name f5Rancher -p 10.1.20.50:80:80 -p 10.1.20.50:443:443 --privileged --restart=unless-stopped -v /home/ubuntu/dockerhost-storage/rancher:/var/lib/rancher rancher/rancher
       args: 
         chdir: /home/ubuntu
 
