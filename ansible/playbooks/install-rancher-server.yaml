@@ -1,0 +1,118 @@
+## ----------------------------------------------------------------------------
+## ..:: Rancher Server installation ::..
+## ----------------------------------------------------------------------------
+
+## Installing Rancher Server
+- hosts: rancher_server
+  remote_user: root
+  tasks:
+
+    - name: Upgrading all packages to the latest version
+      apt:
+        update_cache: yes
+        upgrade: dist
+        
+    - name: Remove resolv.conf link
+      file:
+        path: /etc/resolv.conf
+        state: absent
+
+    - name: Copy resolv.conf file
+      copy:
+        src: resolv.conf
+        dest: /etc/resolv.conf
+
+    - name: setting hostname
+      template:
+        src: hostname.j2
+        dest: /etc/hostname
+
+    - name: Enable rc.local
+      template:
+        src: rc.local.j2
+        dest: /etc/rc.local
+        mode: '0755'
+
+    - name: Executing /etc/rc.local
+      command: /etc/rc.local
+
+    - name: Reboot nginx-plus and wait for it to restart
+      reboot:
+        msg: "Reboot initiated by Ansible"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
+
+    ## Installing ..:: Docker CE ::..
+    ## ------------------------------
+    - name: adding Docker apt-key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: adding Docker's APT repository
+      apt_repository:
+       repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+       state: present
+       filename: 'docker-ce'
+
+    - name: installing docker-ce
+      apt:
+        name: docker-ce
+        state: present
+        update_cache: true
+    
+    - name: Adding ububtu user to docker group
+      command: usermod -aG docker ubuntu
+
+    - name: Configure Docker to use a self signed certificate with local Registry
+      lineinfile: 
+        dest: /lib/systemd/system/docker.service
+        regexp: '^ExecStart' 
+        line: 'ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock --insecure-registry registry.f5-udf.com:5000'
+        backrefs: yes
+
+    - name: Restart service Docker - Reload files
+      command: systemctl daemon-reload
+
+    - name: Restart service Docker
+      service:
+        name: docker
+        state: restarted
+
+    ## Preparing filesystem to host mysql files for Rancher Server
+    - name: Rancher Server Docker storage configuration
+      file:
+        path: /home/ubuntu/dockerhost-storage/rancher
+        state: directory
+        owner: ubuntu
+        group: ubuntu    
+
+    ## Startiing Rancher Server Docker Container
+    - name: Startiing Rancher Server Docker Container
+      become: true
+      become_user: ubuntu
+      command: docker run -d --name f5Rancher -p 10.1.20.50:8080:8080 --restart=unless-stopped -v /home/ubuntu/dockerhost-storage/rancher:/var/lib/mysql rancher/server
+      args: 
+        chdir: /home/ubuntu
+
+## Deploy VS on BIG-IP to access this NGINX Controller instance
+- hosts: infra-server
+  remote_user: root
+  tasks:
+
+    - name: Copy bigip-automation-files rancher-server file to runf5cli dockerhost dir  
+      copy:
+        src: bigip-automation-files/rancher-server-vs.json
+        dest: /home/ubuntu/dockerhost-storage/f5-cli/f5-cli/as3
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Deply VS on BIG-IP to access this NGINX Controller instance
+      become: true
+      become_user: ubuntu
+      command: docker run --rm -it -v /home/ubuntu/dockerhost-storage/f5-cli/.f5_cli:/root/.f5_cli -v /home/ubuntu/dockerhost-storage/f5-cli/f5-cli/:/f5-cli f5devcentral/f5-cli:latest f5 bigip extension as3 create --declaration as3/rancher-server-vs.json
+      args: 
+        chdir: /home/ubuntu
