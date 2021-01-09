@@ -12,40 +12,21 @@
                 "class": "Application",
                 "template": "generic",
                 "rancher-server-vs": {
-                    "class": "Service_HTTPS",
+                    "class": "Service_TCP",
                     "virtualAddresses": [
                         "10.1.10.205"
                     ],
                     "virtualPort": 443,
-                    "serverTLS": "default_tls",
                     "pool": "rancher-server-pool"
-                },
-                "default_tls": {
-                    "class": "TLS_Server",
-                    "label": "Using ClientSSL BIG-IP Default Self-Signed Certificate",
-                    "certificates": [
-                        {
-                            "certificate": "default_tls_cert"
-                        }
-                    ]
-                },
-                "default_tls_cert": {
-                    "class": "Certificate",
-                    "certificate": {
-                        "bigip": "/Common/default.crt"
-                    },
-                    "privateKey": {
-                        "bigip": "/Common/default.key"
-                    }
                 },
                 "rancher-server-pool": {
                     "class": "Pool",
                     "monitors": [
-                        "http"
+                        "tcp"
                     ],
                     "members": [
                         {
-                            "servicePort": 80,
+                            "servicePort": 443,
                             "serverAddresses": [
                                 "10.1.20.50"
                             ]
