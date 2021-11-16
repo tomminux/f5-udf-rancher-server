@@ -91,7 +91,7 @@
         group: ubuntu    
 
     ## Startiing Rancher Server Docker Container
-    - name: Startiing Rancher Server Docker Container
+    - name: Starting Rancher Server Docker Container
       become: true
       become_user: ubuntu
       command: docker run -d --name f5Rancher -p 10.1.20.50:80:80 -p 10.1.20.50:443:443 --privileged --restart=unless-stopped -v /home/ubuntu/dockerhost-storage/rancher:/var/lib/rancher rancher/rancher
@@ -140,7 +140,7 @@
         owner: ubuntu
         group: ubuntu
 
-    - name: Deply VS on BIG-IP to access this NGINX Controller instance
+    - name: Deploy VS on BIG-IP to access this NGINX Controller instance
       become: true
       become_user: ubuntu
       command: docker run --rm -it -v /home/ubuntu/dockerhost-storage/f5-cli/.f5_cli:/root/.f5_cli -v /home/ubuntu/dockerhost-storage/f5-cli/f5-cli/:/f5-cli f5devcentral/f5-cli:latest f5 bigip extension as3 create --declaration as3/rancher-server-vs.json
